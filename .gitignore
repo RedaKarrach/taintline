@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+env/
+
+# Test / coverage
+.pytest_cache/
+.coverage
+htmlcov/
+.ruff_cache/
+
+# taintline run outputs (keep examples/ sources, ignore generated reports)
+examples/out/
+examples/*.manifest.json
+examples/baseline.json
+examples/dataset.jsonl
+examples/openai_trace.json
+*.sarif
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Separate project that shared the scratch workspace
+palimpsest/

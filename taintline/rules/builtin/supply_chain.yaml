@@ -1,0 +1,51 @@
+id: TL-SCH-001
+title: Tool description carries prompt-injection payload (tool poisoning)
+severity: high
+description: >
+  A registered tool / MCP server advertised a description containing
+  instructions aimed at the model. Tool schemas are injected into the system
+  context, so this is a supply-chain prompt injection that fires on every turn.
+match:
+  type: schema_injection
+  min_injection_score: 0.3
+mappings:
+  mitre_atlas: [AML.T0053, AML.T0051.001]
+  owasp_llm: [LLM03, LLM01]
+  nist_ai_rmf: [GOVERN 6.1, MAP 4.1]
+tags: [supply-chain, mcp, tool-poisoning]
+references:
+  - https://invariantlabs.ai/blog/mcp-security-notification-tool-poisoning-attacks
+---
+id: TL-SCH-002
+title: Poisoned tool schema steers the agent into a sensitive action
+severity: critical
+description: >
+  The agent performed a sink action while under the influence of a poisoned
+  tool description. Typical pattern: the description tells the model to read a
+  key file and pass it as a hidden parameter.
+match:
+  type: taint_path
+  source_class: [tool_schema]
+  sink_class: ["*"]
+  min_confidence: 0.3
+  min_source_injection: 0.3
+mappings:
+  mitre_atlas: [AML.T0053]
+  owasp_llm: [LLM03, LLM06]
+tags: [supply-chain, mcp, tool-poisoning]
+---
+id: TL-SCH-003
+title: Sensitive data sent to a remote MCP tool
+severity: critical
+description: >
+  Credentials or secret-looking data were passed as arguments to a tool served
+  by a remote MCP endpoint. Remote tools are an egress channel.
+match:
+  type: data_flow
+  data_class: [credential, secret_pattern, pii]
+  sink_class: [mcp_remote]
+  min_coverage: 0.2
+mappings:
+  mitre_atlas: [AML.T0057]
+  owasp_llm: [LLM02, LLM03]
+tags: [supply-chain, mcp, exfiltration]

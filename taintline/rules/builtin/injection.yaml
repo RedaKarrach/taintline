@@ -1,0 +1,59 @@
+id: TL-INJ-001
+title: Indirect prompt injection reaches an exfiltration sink
+severity: critical
+description: >
+  Content from an untrusted source (web page, email, document, ticket, external
+  file, remote tool) influenced a later outbound call (HTTP, email, chat, remote
+  MCP tool). This is the canonical "lethal trifecta": untrusted input + access to
+  private data + an exfiltration channel.
+match:
+  type: taint_path
+  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool]
+  sink_class: [any_exfil]
+  min_confidence: 0.35
+  min_source_injection: 0.3
+mappings:
+  mitre_atlas: [AML.T0051.001]
+  owasp_llm: [LLM01, LLM02]
+  nist_ai_rmf: [MEASURE 2.7, MANAGE 2.4]
+tags: [injection, exfiltration, lethal-trifecta]
+references:
+  - https://atlas.mitre.org/techniques/AML.T0051.001
+  - https://simonwillison.net/2025/Jun/16/the-lethal-trifecta/
+---
+id: TL-INJ-002
+title: Indirect prompt injection reaches a privileged action
+severity: critical
+description: >
+  Untrusted content influenced a code-execution, cloud-control, identity,
+  destructive or financial tool call. Even without data leaving, the attacker
+  steered the agent into a high-impact action.
+match:
+  type: taint_path
+  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool]
+  sink_class: [code_execution, cloud_control, identity, destructive, financial, data_write]
+  min_confidence: 0.35
+  min_source_injection: 0.3
+mappings:
+  mitre_atlas: [AML.T0051.001]
+  owasp_llm: [LLM01, LLM06]
+  nist_ai_rmf: [MEASURE 2.7, MANAGE 2.4]
+tags: [injection, excessive-agency]
+---
+id: TL-INJ-003
+title: Injected content written to a file the agent will later trust
+severity: medium
+description: >
+  Untrusted content with injection signals was written to disk. Files the agent
+  re-reads later become a persistence mechanism for the injection.
+match:
+  type: taint_path
+  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool]
+  sink_class: [file_write]
+  taint_kind: [data]
+  min_confidence: 0.4
+  min_source_injection: 0.3
+mappings:
+  mitre_atlas: [AML.T0051.001]
+  owasp_llm: [LLM01]
+tags: [injection, persistence]

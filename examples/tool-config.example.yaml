@@ -1,0 +1,40 @@
+# Example tool-class override, loaded with:
+#   taintline analyze trace.jsonl --tool-config examples/tool-config.example.yaml
+#
+# Patterns are fnmatch globs on the tool name (case-insensitive). These are MERGED
+# with the built-in tables, so you only list what is specific to your stack.
+
+sources:
+  ticket:
+    - "linear_get_*"          # your ticketing tool returns attacker-reachable text
+  document:
+    - "notion_read_*"
+
+sinks:
+  network_egress:
+    - "internal_webhook_send"
+  cloud_control:
+    - "pulumi_up"
+    - "crossplane_apply"
+  financial:
+    - "quickbooks_create_payment"
+
+sensitive_reads:
+  credential:
+    - "onepassword_get_*"
+    - "doppler_get_*"
+  pii:
+    - "salesforce_query_contacts"
+
+# Extra path hints for generic read_file-style tools
+sensitive_paths:
+  - "*/secrets/*.yaml"
+  - "*.kubeconfig"
+untrusted_paths:
+  - "*/customer-uploads/*"
+
+# Force trust regardless of name
+trusted_tools:
+  - "internal_kb_search"      # your vetted, read-only internal knowledge base
+untrusted_tools:
+  - "community_plugin_*"

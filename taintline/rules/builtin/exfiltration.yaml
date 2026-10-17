@@ -1,0 +1,97 @@
+id: TL-EXF-001
+title: Credential material flows into an outbound call
+severity: critical
+description: >
+  A meaningful fraction of a credential or secret the agent read appears in the
+  arguments of an HTTP, email, chat or remote-tool call.
+match:
+  type: data_flow
+  data_class: [credential, secret_pattern]
+  sink_class: [any_exfil]
+  min_coverage: 0.3
+  chunked: false
+mappings:
+  mitre_atlas: [AML.T0057]
+  mitre_attack: [T1567, T1048]
+  owasp_llm: [LLM02]
+  nist_ai_rmf: [MANAGE 2.4]
+tags: [exfiltration, credentials]
+---
+id: TL-EXF-002
+title: Chunked (low-and-slow) credential exfiltration
+severity: critical
+description: >
+  No single outbound call contained enough of the secret to trip a threshold,
+  but across several calls to the same sink class most of it left. Per-call
+  DLP will miss this; taintline accumulates coverage per secret and sink.
+match:
+  type: data_flow
+  chunked: true
+  sink_class: [any_exfil]
+mappings:
+  mitre_atlas: [AML.T0057]
+  mitre_attack: [T1030, T1567]
+  owasp_llm: [LLM02]
+tags: [exfiltration, evasion, credentials]
+---
+id: TL-EXF-003
+title: PII flows into an outbound call to an unauthorized destination
+severity: high
+description: >
+  Customer / employee data the agent read was sent somewhere the principal did
+  not name in their instructions.
+match:
+  type: data_flow
+  data_class: [pii]
+  sink_class: [any_exfil]
+  min_coverage: 0.3
+  require_unauthorized_destination: true
+mappings:
+  mitre_atlas: [AML.T0057]
+  owasp_llm: [LLM02]
+tags: [exfiltration, pii, privacy]
+---
+id: TL-EXF-004
+title: Credentials written to a file or data store
+severity: medium
+description: >
+  Secrets were copied into a file write or database write. Often benign
+  (writing a config), but worth a look: it widens the blast radius.
+match:
+  type: data_flow
+  data_class: [credential, secret_pattern]
+  sink_class: [file_write, data_write]
+  min_coverage: 0.3
+mappings:
+  owasp_llm: [LLM02]
+tags: [credentials, hygiene]
+---
+id: TL-EXF-005
+title: Secret echoed in model output to the user
+severity: medium
+description: >
+  The model's visible reply contained a secret pattern (API key, private key,
+  JWT, password assignment). Replies are logged, cached and often shown on
+  shared screens.
+match:
+  type: content
+  on_kind: [model_output]
+  secret_present: true
+mappings:
+  owasp_llm: [LLM02]
+tags: [credentials, disclosure]
+---
+id: TL-EXF-006
+title: Outbound beacon in model output (markdown image / query-string leak)
+severity: high
+description: >
+  The model emitted a markdown image or link whose URL carries a query string.
+  When rendered, the client fetches it and leaks the parameters to the host.
+match:
+  type: content
+  on_kind: [model_output]
+  regex: '!\[[^\]]*\]\(https?://[^)\s]+\?[^)\s]{8,}\)'
+mappings:
+  mitre_atlas: [AML.T0057]
+  owasp_llm: [LLM05, LLM02]
+tags: [exfiltration, output-handling]

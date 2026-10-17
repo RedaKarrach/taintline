@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "taintline"
+version = "0.1.0"
+description = "Forensic taint tracking, attack-graph reconstruction and detection engine for AI agent tool-use traces."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "taintline contributors" }]
+keywords = [
+  "security", "forensics", "llm", "ai-agents", "prompt-injection", "taint-analysis",
+  "detection-engineering", "mitre-atlas", "owasp-llm", "mcp",
+]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Information Technology",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Security",
+]
+dependencies = [
+  "click>=8.1",
+  "rich>=13.0",
+  "pyyaml>=6.0",
+  "networkx>=3.0",
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=7.4", "pytest-cov>=4.1", "ruff>=0.4"]
+
+[project.scripts]
+taintline = "taintline.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/your-handle/taintline"
+Documentation = "https://github.com/your-handle/taintline/tree/main/docs"
+
+[tool.setuptools.packages.find]
+include = ["taintline*"]
+
+[tool.setuptools.package-data]
+taintline = ["rules/builtin/*.yaml", "config/*.yaml"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 110
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "W"]
+ignore = ["E501"]

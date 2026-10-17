@@ -1,0 +1,48 @@
+id: TL-AGY-001
+title: Burst of destructive actions
+severity: high
+description: >
+  Five or more destructive tool calls (delete, remove, drop, revoke, terminate)
+  within a short window. Runaway agents and attacker-driven wipes look alike;
+  both need a human.
+match:
+  type: frequency
+  tool_class: [destructive]
+  min_count: 5
+  window: 15
+  unless_principal_regex: '\b(delete|remove|clean ?up|purge|wipe|drop|clear|prune)\b'
+mappings:
+  mitre_attack: [T1485]
+  owasp_llm: [LLM06, LLM10]
+  nist_ai_rmf: [MANAGE 2.3]
+tags: [destructive, excessive-agency, runaway]
+---
+id: TL-AGY-002
+title: Agent stuck repeating the identical tool call
+severity: medium
+description: >
+  The same tool was called with byte-identical arguments four or more times in
+  a row. Indicates a loop, a failing tool the agent keeps retrying, or a
+  denial-of-wallet condition.
+match:
+  type: loop
+  min_repeats: 4
+mappings:
+  owasp_llm: [LLM10]
+tags: [runaway, unbounded-consumption]
+---
+id: TL-AGY-003
+title: Destructive, financial or identity action the principal never asked for
+severity: medium
+description: >
+  A high-impact sink was used, its destination was not named by the user, and
+  nothing in the user's instructions mentions deleting, paying, inviting or
+  granting. A hunting lead rather than a verdict.
+match:
+  type: unprompted_sink
+  sink_class: [destructive, financial, identity]
+  principal_regex: '\b(delete|remove|clean ?up|purge|wipe|drop|revoke|terminate|pay|transfer|charge|refund|invite|grant|add (a )?(user|member)|reset)\b'
+mappings:
+  owasp_llm: [LLM06]
+  nist_ai_rmf: [MANAGE 2.3, GOVERN 1.7]
+tags: [excessive-agency, hunting]

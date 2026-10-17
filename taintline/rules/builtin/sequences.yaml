@@ -1,0 +1,60 @@
+id: TL-SEQ-001
+title: Credential read followed by outbound call to an unauthorized destination
+severity: high
+description: >
+  Within a short window the agent read a secret and then made an outbound call
+  whose destination was never named by the principal. Fires even when the
+  secret was transformed (encoded, hashed, summarised) so lexical data-flow
+  tracking cannot see it.
+match:
+  type: sequence
+  within: 8
+  require_unauthorized_destination: true
+  steps:
+    - tool_class: [credential]
+    - tool_class: [any_exfil]
+mappings:
+  mitre_atlas: [AML.T0057]
+  mitre_attack: [T1552, T1567]
+  owasp_llm: [LLM02]
+tags: [exfiltration, credentials, sequence]
+---
+id: TL-SEQ-002
+title: Cloud privilege-escalation chain
+severity: critical
+description: >
+  Credential access followed by a cloud control-plane write that grants or
+  creates access (new access key, policy attachment, role assumption, admin
+  grants). Classic post-compromise IAM escalation driven through the agent.
+match:
+  type: sequence
+  within: 12
+  steps:
+    - tool_class: [credential]
+    - tool_class: [cloud_control, identity]
+      args_regex: '(create_?access_?key|attach.*policy|put.*policy|assume_?role|add.*(user|member).*(admin|owner)|administrator|iam:\*|\*:\*)'
+mappings:
+  mitre_attack: [T1098, T1078.004, T1548]
+  mitre_atlas: [AML.T0051]
+  owasp_llm: [LLM06]
+tags: [cloud, iam, privilege-escalation]
+---
+id: TL-SEQ-003
+title: Discovery followed by mass destructive action
+severity: high
+description: >
+  A listing/enumeration call followed by repeated destructive calls. Pattern
+  of an agent (or attacker through it) wiping what it just enumerated.
+match:
+  type: sequence
+  within: 6
+  unless_principal_regex: '\b(delete|remove|clean ?up|purge|wipe|drop|clear|prune)\b'
+  steps:
+    - kind: [tool_call]
+      tool: ["list_*", "ls", "find*", "enumerate*", "glob*", "search_files"]
+    - tool_class: [destructive]
+    - tool_class: [destructive]
+mappings:
+  mitre_attack: [T1485, T1083]
+  owasp_llm: [LLM06]
+tags: [destructive, excessive-agency]

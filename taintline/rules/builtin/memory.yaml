@@ -1,0 +1,48 @@
+id: TL-MEM-001
+title: Injection payload persisted to agent memory
+severity: high
+description: >
+  Content carrying injection signals, or content derived from an untrusted
+  source, was written to the agent's long-term memory. Memory poisoning turns a
+  one-off injection into a persistent backdoor that re-fires in future sessions.
+match:
+  type: content
+  on_kind: [memory_write]
+  min_injection_score: 0.3
+mappings:
+  mitre_atlas: [AML.T0051.001, AML.T0020]
+  owasp_llm: [LLM01, LLM04, LLM08]
+  nist_ai_rmf: [MEASURE 2.7]
+tags: [memory, persistence, poisoning]
+---
+id: TL-MEM-002
+title: Tainted memory write (untrusted content stored for later use)
+severity: medium
+description: >
+  A memory write was data-tainted by untrusted content even though it did not
+  contain obvious injection phrases. Review what was stored.
+match:
+  type: content
+  on_kind: [memory_write]
+  min_taint: 0.4
+mappings:
+  owasp_llm: [LLM01, LLM08]
+tags: [memory, persistence]
+---
+id: TL-MEM-003
+title: Poisoned memory from an earlier session triggers a sensitive action
+severity: critical
+description: >
+  A sink call in this session was influenced by taint that entered memory in an
+  earlier session. This is a delayed, cross-session attack and will not be
+  visible to any single-session monitor.
+match:
+  type: taint_path
+  source_class: ["*"]
+  sink_class: ["*"]
+  cross_session: true
+  min_confidence: 0.3
+mappings:
+  mitre_atlas: [AML.T0051.001, AML.T0020]
+  owasp_llm: [LLM01, LLM04]
+tags: [memory, persistence, cross-session]

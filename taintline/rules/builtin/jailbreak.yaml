@@ -1,0 +1,31 @@
+id: TL-JBK-001
+title: Direct jailbreak attempt by the principal
+severity: medium
+description: >
+  The user's own message carries strong override / persona-hijack signals.
+  Could be a compromised account, an insider, or a red-team exercise; either
+  way it changes how every later action should be read.
+match:
+  type: content
+  on_kind: [user_message]
+  min_injection_score: 0.5
+mappings:
+  mitre_atlas: [AML.T0054, AML.T0051.000]
+  owasp_llm: [LLM01]
+tags: [jailbreak, insider]
+---
+id: TL-JBK-002
+title: Jailbreak followed by a sensitive action
+severity: high
+description: >
+  After a jailbreak-style user message the agent executed a sink action. The
+  guardrails that were being argued away were protecting exactly this.
+match:
+  type: taint_path
+  source_class: [user]
+  sink_class: ["*"]
+  min_confidence: 0.3
+mappings:
+  mitre_atlas: [AML.T0054]
+  owasp_llm: [LLM01, LLM06]
+tags: [jailbreak, insider]
