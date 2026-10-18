@@ -1,6 +1,11 @@
 # Architecture
 
-taintline is a pipeline. Each stage is a small, testable module.
+taintline is a pipeline. Each stage is a small, testable module. The engine is
+**incremental**: `TaintEngine.new_session(id)` returns a `SessionState` you
+`feed(event)` one event at a time, and `preview(event)` answers "what would this
+event create?" with no side effects. Batch `analyze()` is a thin loop over
+`feed`, so the forensic analyzer and the runtime guard share identical logic (a
+`tests/test_streaming.py` invariant checks streaming == batch on every scenario).
 
 ```
  trace (JSONL / OpenAI / OTel)
@@ -26,7 +31,38 @@ taintline is a pipeline. Each stage is a small, testable module.
         ▼
    report.py   →  Markdown · JSON · SARIF 2.1 · CSV timeline · HTML
    custody.py  →  evidence manifest (file hash + per-event hash chain)
+
+ Built on the same SessionAnalysis / SessionState:
+   guard/        preview each call -> policy -> allow/log/approve/block; MCP proxy
+   normalize.py  de-obfuscate (NFKC, tags, homoglyphs, base64…) before scoring
+   fuzz.py       evasion matrix: measures each layer's recall under obfuscation
+   forensics/    ioc · stix (2.1) · blast (impact+remediation) · pack (Ed25519) · cloudtrail
+   dashboard.py  single-file interactive HTML investigation UI
 ```
+
+## Guard (runtime prevention)
+
+`guard/` reuses the engine's `preview` + anchored rule evaluation to decide on a
+tool call before it runs. A declarative YAML **policy** maps flows/findings to
+allow/log/require_approval/block; the `MCPProxy` enforces it on live MCP stdio
+traffic with no change to the agent. Blocked calls are recorded as attempts but
+never advance leak state. See [guard.md](guard.md).
+
+## Hardening & robustness
+
+`normalize.py` produces de-obfuscated *views* of text (Unicode NFKC, zero-width
+and tag stripping, homoglyph folding, base64/hex/entity/percent decoding,
+de-spacing); injection scoring unions signals across all views and treats the
+obfuscation itself as a signal, with benign-use guards. `fuzz.py` is an evasion
+harness that measures per-layer recall with hardening on and off. See
+[robustness.md](robustness.md).
+
+## Forensics
+
+`forensics/` builds on the analysis: `ioc` (indicators), `stix` (STIX 2.1
+bundle), `blast` (impact + remediation checklist), `pack` (Ed25519-signed
+evidence bundle), `cloudtrail` (was an exfiltrated key actually used?). See
+[forensics.md](forensics.md).
 
 ## The taint model
 

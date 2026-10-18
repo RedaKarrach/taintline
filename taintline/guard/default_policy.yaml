@@ -1,0 +1,81 @@
+# taintline default guard policy.
+#
+# Every tool call is previewed against the live taint state *before* it runs.
+# Rules are evaluated top to bottom; every rule that matches contributes its
+# action, and the strongest action wins: block > require_approval > log > allow.
+#
+# mode: enforce   -> block / hold calls as decided
+# mode: monitor   -> never interfere; record what *would* have happened
+#                    (use this to roll the guard out safely, then flip to enforce)
+
+version: 1
+mode: enforce
+default_action: allow
+
+# What to do when a rule says require_approval but no approver is wired in.
+# Fail closed: an unanswerable approval is a block.
+on_approval_unavailable: block
+
+# Registered tools whose description scores at least this much on the injection
+# heuristics are treated as poisoned.
+poisoned_tool_threshold: 0.3
+
+rules:
+  - name: block-poisoned-tool
+    description: Never execute a tool whose advertised description carries injection payloads.
+    action: block
+    when:
+      poisoned_tool: true
+
+  - name: block-memory-poisoning
+    description: >
+      Refuse to persist instruction-like content into the agent's long-term
+      memory. Blocking at write time defuses delayed, cross-session attacks
+      before they can ever fire.
+    action: block
+    when:
+      memory_injection:
+        min_score: 0.3
+
+  - name: block-secret-fragment-egress
+    description: >
+      Block any outbound call carrying even a fragment (>= 8 characters) of a
+      secret the agent has read, to a destination the user never named. This is
+      stricter than the forensic data-flow rules on purpose: it stops chunked
+      exfiltration at the first chunk, not after half the key has left.
+    action: block
+    when:
+      secret_fragment:
+        min_chars: 8
+      sink_class: [any_exfil]
+      unauthorized_destination: true
+
+  - name: block-critical
+    description: Any critical finding completed by this call.
+    action: block
+    when:
+      min_severity: critical
+
+  - name: hold-high
+    description: High-severity findings need a human decision.
+    action: require_approval
+    when:
+      min_severity: high
+
+  - name: log-medium
+    action: log
+    when:
+      min_severity: medium
+
+# Screening of model output before the user's client renders it.
+output:
+  # Markdown images / links whose URL carries a query string to a host that is
+  # not allowlisted are neutralized: rendering them would leak the query string.
+  neutralize_beacons: true
+  # Recognized secrets (API keys, private keys, tokens) are redacted.
+  redact_secrets: true
+
+# Allowlists override every rule above.
+allow:
+  tools: []
+  destinations: []

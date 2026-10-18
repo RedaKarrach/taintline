@@ -31,6 +31,7 @@ dependencies = [
   "pyyaml>=6.0",
   "networkx>=3.0",
   "numpy>=1.24",
+  "cryptography>=42.0",
 ]
 
 [project.optional-dependencies]
@@ -47,7 +48,7 @@ Documentation = "https://github.com/your-handle/taintline/tree/main/docs"
 include = ["taintline*"]
 
 [tool.setuptools.package-data]
-taintline = ["rules/builtin/*.yaml", "config/*.yaml"]
+taintline = ["rules/builtin/*.yaml", "config/*.yaml", "guard/*.yaml"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

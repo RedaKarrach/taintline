@@ -190,7 +190,15 @@ def _flow_evidence(f: Flow, a: SessionAnalysis) -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
-def _m_taint_path(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _flow_touches(f: Flow, anchor: str | None) -> bool:
+    """Anchored evaluation: a flow counts when the anchor is its sink or part of
+    its sink chain (chunked flows list every contributing call)."""
+    if anchor is None:
+        return True
+    return f.sink == anchor or anchor in f.details.get("sink_events", ())
+
+
+def _m_taint_path(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     sources = _as_list(m.get("source_class"))
     sinks = _as_list(m.get("sink_class"))
@@ -199,7 +207,7 @@ def _m_taint_path(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     kinds = _as_list(m.get("taint_kind"))
     out = []
     for f in a.flows:
-        if f.kind != "taint_path":
+        if f.kind != "taint_path" or not _flow_touches(f, anchor):
             continue
         if min_src_inj and float(f.details.get("injection_score", 0.0)) < min_src_inj:
             continue
@@ -222,7 +230,7 @@ def _m_taint_path(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     return out
 
 
-def _m_data_flow(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_data_flow(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     classes = _as_list(m.get("data_class"))
     sinks = _as_list(m.get("sink_class"))
@@ -230,7 +238,7 @@ def _m_data_flow(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     chunked = m.get("chunked")
     out = []
     for f in a.flows:
-        if f.kind not in ("data_flow", "chunked_data_flow"):
+        if f.kind not in ("data_flow", "chunked_data_flow") or not _flow_touches(f, anchor):
             continue
         if chunked is True and f.kind != "chunked_data_flow":
             continue
@@ -252,7 +260,30 @@ def _m_data_flow(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     return out
 
 
-def _m_sequence(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _last_step_unauthorized(m: dict[str, Any], a: SessionAnalysis, last: Event) -> bool:
+    if not m.get("require_unauthorized_destination"):
+        return True
+    from taintline.textsim import destination_authorized, destinations
+
+    if any(f.details.get("destination_authorized") for f in a.flows if f.sink == last.id):
+        return False
+    auth, _ = destination_authorized(destinations(last.args_text), a.principal_text)
+    return not auth
+
+
+def _sequence_finding(rule: Rule, a: SessionAnalysis, matched: list[str]) -> Finding:
+    last = a.event(matched[-1])
+    conf = max(0.5, a.max_taint_confidence(last.id)) if last else 0.5
+    return _finding(
+        rule,
+        a,
+        matched,
+        round(conf, 3),
+        {"steps": [{"event": eid, "excerpt": (a.event(eid).short(160) if a.event(eid) else "")} for eid in matched]},
+    )
+
+
+def _m_sequence(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     if _principal_authorizes(m, a):
         return []
@@ -261,7 +292,31 @@ def _m_sequence(rule: Rule, a: SessionAnalysis) -> list[Finding]:
         raise RuleError(f"{rule.id}: sequence needs at least two steps")
     within = int(m.get("within", 10))
     events = a.events
-    out = []
+
+    if anchor is not None:
+        # The anchor must be the final step; find the tightest chain ending there.
+        idx = next((k for k, e in enumerate(events) if e.id == anchor), None)
+        if idx is None or not _step_matches(steps[-1], events[idx], a):
+            return []
+        if not _last_step_unauthorized(m, a, events[idx]):
+            return []
+        for i in range(idx - 1, max(-1, idx - within - 1), -1):
+            if not _step_matches(steps[0], events[i], a):
+                continue
+            matched = [events[i].id]
+            pos = i
+            ok = True
+            for step in steps[1:-1]:
+                found = next((j for j in range(pos + 1, idx) if _step_matches(step, events[j], a)), None)
+                if found is None:
+                    ok = False
+                    break
+                matched.append(events[found].id)
+                pos = found
+            if ok:
+                return [_sequence_finding(rule, a, matched + [anchor])]
+        return []
+
     for i, first in enumerate(events):
         if not _step_matches(steps[0], first, a):
             continue
@@ -279,34 +334,14 @@ def _m_sequence(rule: Rule, a: SessionAnalysis) -> list[Finding]:
                 break
             matched.append(events[found].id)
             pos = found
-        if not ok:
+        if not ok or not _last_step_unauthorized(m, a, events[pos]):
             continue
-        last = events[pos]
-        if m.get("require_unauthorized_destination"):
-            flows_for_last = [f for f in a.flows if f.sink == last.id]
-            if any(f.details.get("destination_authorized") for f in flows_for_last):
-                continue
-            from taintline.textsim import destination_authorized, destinations
-
-            auth, _ = destination_authorized(destinations(last.args_text), a.principal_text)
-            if auth:
-                continue
-        conf = max(0.5, a.max_taint_confidence(last.id))
-        out.append(
-            _finding(
-                rule,
-                a,
-                matched,
-                round(conf, 3),
-                {"steps": [{"event": eid, "excerpt": (a.event(eid).short(160) if a.event(eid) else "")} for eid in matched]},
-            )
-        )
-        # avoid reporting every overlapping window of the same chain
-        break
-    return out
+        # report one chain per session; anchored mode handles later chains
+        return [_sequence_finding(rule, a, matched)]
+    return []
 
 
-def _m_frequency(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_frequency(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     if _principal_authorizes(m, a):
         return []
@@ -320,24 +355,31 @@ def _m_frequency(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     ]
     if len(hits) < min_count:
         return []
-    # sliding window over sequence positions
+
+    def burst_finding(burst: list[Event]) -> Finding:
+        return _finding(
+            rule,
+            a,
+            [h.id for h in burst],
+            0.8,
+            {"count": len(burst), "window": window, "tools": sorted({h.tool or "" for h in burst})},
+        )
+
+    if anchor is not None:
+        last = next((h for h in hits if h.id == anchor), None)
+        if last is None:
+            return []
+        burst = [h for h in hits if last.seq - window <= h.seq <= last.seq]
+        return [burst_finding(burst)] if len(burst) >= min_count else []
+
     for i in range(len(hits) - min_count + 1):
         span = hits[i + min_count - 1].seq - hits[i].seq
         if span <= window:
-            burst = [h for h in hits if hits[i].seq <= h.seq <= hits[i].seq + window]
-            return [
-                _finding(
-                    rule,
-                    a,
-                    [h.id for h in burst],
-                    0.8,
-                    {"count": len(burst), "window": window, "tools": sorted({h.tool or "" for h in burst})},
-                )
-            ]
+            return [burst_finding([h for h in hits if hits[i].seq <= h.seq <= hits[i].seq + window])]
     return []
 
 
-def _m_loop(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_loop(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     min_repeats = int(m.get("min_repeats", 4))
     classes = _as_list(m.get("tool_class"))
@@ -349,14 +391,18 @@ def _m_loop(rule: Rule, a: SessionAnalysis) -> list[Finding]:
             run.append(e)
         else:
             run = [e]
-        if len(run) > len(best):
+        if anchor is not None:
+            if e.id == anchor:
+                best = list(run)
+                break
+        elif len(run) > len(best):
             best = list(run)
     if len(best) >= min_repeats:
         return [_finding(rule, a, [e.id for e in best], 0.7, {"repeats": len(best), "tool": best[0].tool, "args": best[0].args})]
     return []
 
 
-def _m_content(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_content(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     m = rule.match
     kinds = _as_list(m.get("on_kind") or ["model_output"])
     rx = re.compile(m["regex"], re.I | re.S) if m.get("regex") else None
@@ -366,6 +412,8 @@ def _m_content(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     min_taint = float(m.get("min_taint", 0.0))
     out = []
     for e in a.events:
+        if anchor is not None and e.id != anchor:
+            continue
         if e.kind not in kinds:
             continue
         if classes and not _class_matches(classes, a.info(e), e):
@@ -390,11 +438,11 @@ def _m_content(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     return out
 
 
-def _m_schema_injection(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_schema_injection(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     min_score = float(rule.match.get("min_injection_score", 0.3))
     out = []
     for e in a.events:
-        if e.kind != "tool_registered":
+        if e.kind != "tool_registered" or (anchor is not None and e.id != anchor):
             continue
         inj = a.injection.get(e.id)
         if inj and inj.score >= min_score:
@@ -410,7 +458,7 @@ def _m_schema_injection(rule: Rule, a: SessionAnalysis) -> list[Finding]:
     return out
 
 
-def _m_unprompted_sink(rule: Rule, a: SessionAnalysis) -> list[Finding]:
+def _m_unprompted_sink(rule: Rule, a: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
     from taintline.textsim import destination_authorized, destinations
 
     m = rule.match
@@ -420,7 +468,7 @@ def _m_unprompted_sink(rule: Rule, a: SessionAnalysis) -> list[Finding]:
         return []
     out = []
     for e in a.events:
-        if e.kind != "tool_call":
+        if e.kind != "tool_call" or (anchor is not None and e.id != anchor):
             continue
         info = a.info(e)
         if not info.is_sink or not _class_matches(classes, info, e):
@@ -530,11 +578,18 @@ class RuleEngine:
     def __init__(self, rules: list[Rule]):
         self.rules = [r for r in rules if r.enabled]
 
-    def evaluate(self, analysis: SessionAnalysis) -> list[Finding]:
+    def evaluate(self, analysis: SessionAnalysis, anchor: str | None = None) -> list[Finding]:
+        """Evaluate every rule over a session.
+
+        With ``anchor`` (an event id), each matcher only reports findings that
+        this event *completes* - e.g. the 5th delete in a burst, the outbound
+        call that ends a credential-read -> exfil chain. This is how the runtime
+        guard asks "is this specific call the attack?".
+        """
         findings: list[Finding] = []
         for rule in self.rules:
             matcher = _MATCHERS[rule.match["type"]]
-            findings.extend(matcher(rule, analysis))
+            findings.extend(matcher(rule, analysis, anchor))
         # de-duplicate identical (rule, events) pairs, keep highest confidence
         best: dict[tuple[str, tuple[str, ...]], Finding] = {}
         for f in findings:

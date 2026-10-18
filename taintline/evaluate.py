@@ -104,7 +104,6 @@ def run_eval(baseline_benign: int = 60, seed: int = 101, rule_paths: list[str] |
     import random
 
     rng = random.Random(seed)
-    classifier = ToolClassifier()
 
     # 1) build & fit an anomaly baseline on fresh benign sessions
     benign_events = []

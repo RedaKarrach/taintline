@@ -104,9 +104,9 @@ def load_otel(path: str) -> list[Event]:
         ts = _ts(s.get("startTimeUnixNano", s.get("start_time")), seq)
         op = attrs.get("gen_ai.operation.name", "")
 
-        def add(kind: str, **kw: Any) -> None:
+        def add(kind: str, _sid: str = sid, _ts: str = ts, **kw: Any) -> None:
             nonlocal seq
-            events.append(Event(id=f"{sid}:{seq:05d}", session_id=sid, seq=seq, ts=ts, kind=kind, **kw))
+            events.append(Event(id=f"{_sid}:{seq:05d}", session_id=_sid, seq=seq, ts=_ts, kind=kind, **kw))
             seq += 1
 
         if op == "execute_tool":

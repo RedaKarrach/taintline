@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>taintline — stop AI agents from getting hijacked</title>
+<meta name="description" content="taintline follows untrusted text through an AI agent's actions and checks it before anything sensitive runs. Investigate incidents, or block them live.">
+<meta property="og:title" content="taintline">
+<meta property="og:description" content="Catch AI agents getting hijacked — and stop them before they leak your secrets.">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="glow"></div><div class="gridbg"></div>
+
+<nav><div class="wrap">
+  <a class="logo" href="#"><i></i>taintline</a>
+  <div class="links">
+    <a href="#how" class="hide-sm">How it works</a>
+    <a href="#try" class="hide-sm">Try it</a>
+    <a href="#modes" class="hide-sm">Use it</a>
+    <a href="#proof" class="hide-sm">Proof</a>
+    <a class="btn ghost" href="https://github.com/RedaKarrach/taintline">GitHub ★</a>
+  </div>
+</div></nav>
+
+<main>
+<header><div class="wrap">
+  <div class="eyebrow up d1"><span class="dot"></span> AI-agent security · prompt injection · forensics</div>
+  <h1 class="up d2">Your AI agent reads the whole internet.<br><span class="g">What if part of it is lying to it?</span></h1>
+  <p class="lede up d3">taintline follows untrusted text through everything your agent does and checks it before anything
+  sensitive runs. Use it to investigate what went wrong — or to stop it from going wrong at all.</p>
+  <div class="cta up d4">
+    <a class="btn" href="https://github.com/RedaKarrach/taintline">Get it on GitHub</a>
+    <a class="btn ghost" href="#how">Watch how it works ↓</a>
+  </div>
+  <div class="stage up d5">
+    <img src="explainer.svg" alt="How taintline tracks untrusted input through an agent and checks it before a sensitive action">
+    <p class="cap">Sit back for nine seconds — it loops. That's the whole idea in one picture.</p>
+  </div>
+</div></header>
+
+<section id="how"><div class="wrap">
+  <h2>Here's the trick</h2>
+  <p class="sub">Most tools read an incoming message and guess <span class="q">"does this look dangerous?"</span>
+  taintline asks a sharper question: <span class="q">"did the dangerous thing actually happen?"</span></p>
+  <div class="steps">
+    <div class="step"><div class="ico">📥</div><h3>Something untrusted arrives</h3><p>A web page, an email, a file, a tool result. taintline marks it as "not ours" the moment it enters.</p></div>
+    <div class="step"><div class="ico">🧭</div><h3>It follows the trail</h3><p>As the agent reasons and acts, taintline tracks where that text goes — even into the agent's long-term memory, days later.</p></div>
+    <div class="step"><div class="ico">🚦</div><h3>It checks at the door</h3><p>Before any sensitive action — sending, running, writing, cloud calls — it asks: is untrusted input steering this? And is real data about to leave?</p></div>
+    <div class="step"><div class="ico">🧾</div><h3>It builds the case</h3><p>Every finding comes with the exact chain of events, tamper-proof hashes, and mappings to MITRE ATLAS, ATT&amp;CK, OWASP and NIST.</p></div>
+  </div>
+  <p style="color:var(--muted);margin-top:24px;max-width:720px">A page that merely <i>mentions</i> secrets? Nothing happens. A page that
+  <i>talks the agent into sending one out</i>? That's the moment taintline lights up. Quiet during real work, loud when it counts.</p>
+</div></section>
+
+<section id="try"><div class="wrap">
+  <h2>See it catch one</h2>
+  <p class="sub">Fake an attack, then investigate it. No setup, nothing real touched.</p>
+  <pre class="block"><code>pip install -e .
+
+taintline simulate --scenario indirect_exfil --out demo.jsonl   <span style="color:var(--muted)"># fake an attack</span>
+taintline analyze demo.jsonl                                     <span style="color:var(--muted)"># investigate it</span></code></pre>
+  <div class="stage" style="margin-top:16px;padding:10px"><img src="demo.svg" alt="taintline analyze output"></div>
+</div></section>
+
+<section id="modes"><div class="wrap">
+  <h2>Three ways to use it</h2>
+  <p class="sub">One engine, whether you're cleaning up after an incident or trying to prevent the next one.</p>
+  <div class="modes">
+    <div class="mode"><h3>🔎 Analyze</h3><p>Something went sideways. Reconstruct exactly what happened, with evidence you can hand to anyone.</p><pre>taintline analyze trace.jsonl \
+  --out report/ --dashboard</pre></div>
+    <div class="mode"><h3>🛡️ Guard</h3><p>Don't let it go sideways. Check every tool call live and block the bad ones — no changes to your agent.</p><pre>taintline guard mcp-proxy \
+  -- your-mcp-server</pre></div>
+    <div class="mode"><h3>📡 Pipeline</h3><p>Wire it into CI or your SIEM. Fail a build if an agent trace leaks something.</p><pre>taintline analyze traces.jsonl \
+  --fail-on high</pre></div>
+  </div>
+  <p style="color:var(--muted);margin-top:22px;max-width:740px">The <b style="color:var(--fg)">Guard</b> is the one to show off. It runs each tool call through the
+  taint engine first and decides — allow, log, ask a human, or block — in about a millisecond and a half. Drop it in front of any
+  Model Context Protocol server and your agent is covered.</p>
+</div></section>
+
+<section id="proof"><div class="wrap">
+  <h2>"Okay, but does it work?"</h2>
+  <p class="sub">Fair question. It proves itself — and it's honest about the limits.</p>
+  <div class="stats">
+    <div class="stat"><b>100%</b><span>of attacks caught in the eval</span></div>
+    <div class="stat"><b>0</b><span>false alarms on look-alikes</span></div>
+    <div class="stat"><b>66</b><span>disguised variants it fuzzes itself with</span></div>
+    <div class="stat"><b>113</b><span>tests, green on Python 3.10–3.13</span></div>
+  </div>
+  <p style="color:var(--muted);margin-top:22px;max-width:740px">It even attacks its <i>own</i> detections with 66 disguised variants. The result it'll tell you
+  straight: a single clever trick can slip past the keyword layer — but the behaviour layer and the guard still stop every one. That's defense in depth you can measure.</p>
+</div></section>
+
+<section id="catch"><div class="wrap">
+  <h2>What it catches</h2>
+  <p class="sub">The real playbook against AI agents, including the disguised versions.</p>
+  <div class="chips">
+    <span>Indirect prompt injection</span><span>Tool &amp; MCP poisoning</span><span>Cross-session memory poisoning</span>
+    <span>Credential exfiltration</span><span>Slow, chunked leaks</span><span>PII exfiltration</span>
+    <span>Cloud privilege escalation</span><span>Runaway destructive agents</span><span>Jailbreak-then-act</span>
+    <span>Output tracking beacons</span><span>Zero-width / homoglyph / base64 obfuscation</span>
+  </div>
+  <p class="maps">Every finding maps to <b>MITRE ATLAS</b>, <b>MITRE ATT&amp;CK</b>, the <b>OWASP LLM Top 10</b> and <b>NIST AI RMF</b> — the language your security team already speaks.</p>
+</div></section>
+</main>
+
+<footer><div class="wrap">
+  <div style="margin-bottom:14px"><a class="btn" href="https://github.com/RedaKarrach/taintline">Star it on GitHub</a></div>
+  <div>Built where ML security, cloud security, DFIR, detection engineering and GRC meet. MIT licensed.</div>
+  <p class="note">taintline is a detection, prevention and forensics layer — run it alongside input/output filtering and least-privilege tools,
+  not instead of them. Everything in the demos is synthetic: fake secrets, <code>.test</code> addresses, nothing real ever touched.</p>
+</div></footer>
+</body>
+</html>
