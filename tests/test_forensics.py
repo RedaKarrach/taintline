@@ -11,7 +11,7 @@ from taintline.forensics import (
 from taintline.forensics.pack import generate_keypair
 from taintline.rules.engine import RuleEngine, load_rules
 from taintline.schema import dump_jsonl, group_sessions, load_jsonl
-from taintline.simulate.scenarios import SCENARIOS, get_scenario
+from taintline.simulate.scenarios import get_scenario
 from taintline.taint import TaintEngine
 from taintline.toolclass import ToolClassifier
 

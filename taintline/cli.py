@@ -29,7 +29,6 @@ from taintline.custody import build_manifest, verify_manifest
 from taintline.graph import build_graph, to_dot, to_json
 from taintline.report import (
     findings_json,
-    summary,
     to_html,
     to_markdown,
     to_sarif,
@@ -160,7 +159,6 @@ def analyze(trace, fmt, rule_paths, no_builtin, tool_config, baseline_path, out_
     if pack_out:
         _write_evidence_pack(pack_out, trace, events, analyses, findings, iocs, blast, man, sign_key, quiet)
 
-    s = summary(findings, anomalies)
     if fail_on != "never":
         gate = SEVERITY_RANK[fail_on]
         if any(f.rank >= gate for f in findings):
@@ -209,8 +207,9 @@ def _write_evidence_pack(path, trace, events, analyses, findings, iocs, blast, m
 
     priv = pub = None
     if sign_key:
-        from taintline.forensics.pack import load_private_key
         from cryptography.hazmat.primitives import serialization
+
+        from taintline.forensics.pack import load_private_key
 
         priv = open(sign_key, encoding="utf-8").read()
         pub = load_private_key(priv).public_key().public_bytes(
@@ -257,9 +256,9 @@ def baseline(traces, fmt, out_path, generate):
     """Fit a behavioural baseline from benign TRACES (or synthesize them)."""
     events = []
     if generate:
-        from taintline.simulate.synth import benign_session
-
         import random
+
+        from taintline.simulate.synth import benign_session
 
         rng = random.Random(7)
         for i in range(generate):

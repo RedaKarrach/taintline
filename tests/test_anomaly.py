@@ -1,12 +1,13 @@
 import random
 
+import numpy as np
+
 from taintline.anomaly import Baseline, BigramModel, IsolationForest
 from taintline.schema import group_sessions
 from taintline.simulate.scenarios import get_scenario
 from taintline.simulate.synth import benign_session
 from taintline.taint import TaintEngine
 from taintline.toolclass import ToolClassifier
-import numpy as np
 
 
 def _benign_analyses(n=40, seed=3):

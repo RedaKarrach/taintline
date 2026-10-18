@@ -1,7 +1,6 @@
 import json
 
-from taintline.forensics import correlate, exposed_keys_from_analyses, extract_iocs, load_cloudtrail
-from taintline.rules.engine import RuleEngine, load_rules
+from taintline.forensics import correlate, exposed_keys_from_analyses, load_cloudtrail
 from taintline.schema import group_sessions
 from taintline.simulate.scenarios import get_scenario
 from taintline.taint import TaintEngine

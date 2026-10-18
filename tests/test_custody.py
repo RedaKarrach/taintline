@@ -1,9 +1,8 @@
 import json
 
 from taintline.custody import build_manifest, verify_manifest
-from taintline.schema import load_jsonl
+from taintline.schema import dump_jsonl, load_jsonl
 from taintline.simulate.scenarios import get_scenario
-from taintline.schema import dump_jsonl
 
 
 def _write_trace(tmp_path, name="t.jsonl"):

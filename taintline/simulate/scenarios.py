@@ -10,8 +10,8 @@ All data is synthetic. Secrets are fake; exfil destinations use .test domains.
 from __future__ import annotations
 
 import random
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Callable
 
 from taintline.schema import Event
 from taintline.simulate.synth import benign_session, make_builder
