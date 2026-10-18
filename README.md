@@ -5,6 +5,8 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Tests](https://img.shields.io/badge/tests-113%20passing-brightgreen)](tests/)
 
+**[→ taintline.io-style site](https://redakarrach.github.io/taintline/)** · the quick tour, if you'd rather click than read.
+
 **What happens when your AI agent reads a web page that's lying to it?**
 
 Right now, probably nothing good. You hand an agent some tools, it goes off to
