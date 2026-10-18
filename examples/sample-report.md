@@ -1,24 +1,24 @@
 # taintline forensic report
 
-- **Trace:** `examples/indirect_exfil.jsonl`
+- **Trace:** `C:\Users\redan\AppData\Local\Temp/ie.jsonl`
 - **Sessions:** 1 · **Events:** 11
-- **Generated:** 2026-10-17T22:42:14+00:00 by taintline 0.1.0
+- **Generated:** 2026-10-18T22:04:32+00:00 by taintline 0.1.0
 
 ## Executive summary
 
 | Severity | Findings |
 |---|---:|
-| 🟥 CRITICAL | 2 |
-| 🟧 HIGH | 1 |
-| 🟨 MEDIUM | 0 |
-| 🟦 LOW | 0 |
-| ⬜ INFO | 0 |
+| CRITICAL | 2 |
+| HIGH | 1 |
+| MEDIUM | 0 |
+| LOW | 0 |
+| INFO | 0 |
 
 **Sessions needing immediate review:** `atk-indirect-exfil`
 
 ## Findings
 
-### 1. 🟥 CRITICAL · TL-EXF-001 · Credential material flows into an outbound call
+### 1. CRITICAL · TL-EXF-001 · Credential material flows into an outbound call
 
 - **Session:** `atk-indirect-exfil` · **Confidence:** 1.00
 - **Mappings:** MITRE ATLAS: AML.T0057 (LLM Data Leakage); MITRE ATT&CK: T1567 (Exfiltration Over Web Service), T1048 (Exfiltration Over Alternative Protocol); OWASP Top 10 for LLM Applications (2025): LLM02 (Sensitive Information Disclosure); NIST AI RMF 1.0: MANAGE 2.4 (Mechanisms to supersede, disengage or deactivate the system)
@@ -35,7 +35,7 @@
 - destination(s) `evil-collector.test` **never named by the principal**
 
 
-### 2. 🟥 CRITICAL · TL-INJ-001 · Indirect prompt injection reaches an exfiltration sink
+### 2. CRITICAL · TL-INJ-001 · Indirect prompt injection reaches an exfiltration sink
 
 - **Session:** `atk-indirect-exfil` · **Confidence:** 0.94
 - **Mappings:** MITRE ATLAS: AML.T0051.001 (LLM Prompt Injection: Indirect); OWASP Top 10 for LLM Applications (2025): LLM01 (Prompt Injection), LLM02 (Sensitive Information Disclosure); NIST AI RMF 1.0: MEASURE 2.7 (AI system security and resilience evaluated), MANAGE 2.4 (Mechanisms to supersede, disengage or deactivate the system)
@@ -54,7 +54,7 @@
 - injection signals: concealment, exfil_instruction, hidden_html_comment, override_instructions, secret_targeting
 
 
-### 3. 🟧 HIGH · TL-SEQ-001 · Credential read followed by outbound call to an unauthorized destination
+### 3. HIGH · TL-SEQ-001 · Credential read followed by outbound call to an unauthorized destination
 
 - **Session:** `atk-indirect-exfil` · **Confidence:** 0.94
 - **Mappings:** MITRE ATLAS: AML.T0057 (LLM Data Leakage); MITRE ATT&CK: T1552 (Unsecured Credentials), T1567 (Exfiltration Over Web Service); OWASP Top 10 for LLM Applications (2025): LLM02 (Sensitive Information Disclosure)

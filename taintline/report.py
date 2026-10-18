@@ -160,7 +160,7 @@ def write_timeline_csv(analyses: list[SessionAnalysis], findings: list[Finding],
 
 
 def _sev_badge(sev: str) -> str:
-    return {"critical": "🟥 CRITICAL", "high": "🟧 HIGH", "medium": "🟨 MEDIUM", "low": "🟦 LOW", "info": "⬜ INFO"}[sev]
+    return {"critical": "CRITICAL", "high": "HIGH", "medium": "MEDIUM", "low": "LOW", "info": "INFO"}[sev]
 
 
 def to_markdown(

@@ -3,113 +3,95 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>taintline — stop AI agents from getting hijacked</title>
-<meta name="description" content="taintline follows untrusted text through an AI agent's actions and checks it before anything sensitive runs. Investigate incidents, or block them live.">
+<title>taintline</title>
+<meta name="description" content="What happens when your AI agent reads a web page that is lying to it? taintline reads the agent's own log, shows what the page made it do, and can refuse the call before anything leaves.">
 <meta property="og:title" content="taintline">
-<meta property="og:description" content="Catch AI agents getting hijacked — and stop them before they leak your secrets.">
-<link rel="stylesheet" href="style.css">
+<meta property="og:description" content="Incident response for a hijacked AI agent. Seven questions, one command each.">
+<style>
+  :root { --bg: #03060c; --acc: #5aa9ff; --acc-dim: #2a5c9e; --text: #cfd7e4; --dim: #6b7790; --green: #5ff28a; --red: #ff6b6b; --yellow: #ffcc55; --cyan: #7fd7ff; --sel: #0a1526; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 14px; line-height: 1.5; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+  body::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 50; background: repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0px, rgba(0,0,0,.18) 1px, transparent 1px, transparent 3px); opacity: .5; }
+  body::after { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 49; background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%); }
+  a { color: var(--cyan); }
+  pre, .pre { font-family: inherit; margin: 0; white-space: pre-wrap; word-break: break-word; }
+  .wrap { max-width: 900px; margin: 0 auto; padding: 0 16px; min-width: 0; }
+  .status { position: fixed; top: 0; left: 0; right: 0; z-index: 60; background: var(--acc); color: #04101f; font-weight: 600; font-size: 12.5px; padding: 4px 0; }
+  .status .wrap { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; }
+  .status .keys { margin-left: auto; font-weight: 400; }
+  .status .keys b { font-weight: 600; }
+  @media (max-width: 640px) { .status .keys { display: none; } }
+  .banner { padding: 56px 0 10px; }
+  .banner pre { color: var(--acc); font-size: clamp(6px, 1.9vw, 14px); line-height: 1.15; text-shadow: 0 0 8px rgba(90,169,255,.35); white-space: pre; overflow: hidden; }
+  .tag { color: var(--dim); margin: 10px 0 0; }
+  .tag b { color: var(--text); font-weight: 400; }
+  .intro { margin: 22px 0 10px; }
+  .intro .k { color: var(--acc); }
+  .step { margin-top: 28px; padding-top: 18px; border-top: 1px dashed #15243a; }
+  .q { color: var(--acc); font-weight: 600; font-size: 16px; margin: 0 0 10px; }
+  .q small { color: var(--dim); font-weight: 400; font-size: 12px; display: block; margin-bottom: 4px; letter-spacing: .08em; }
+  .prompt { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 8px; cursor: pointer; padding: 6px 8px; margin-left: -8px; border-radius: 3px; }
+  .prompt:hover { background: var(--sel); }
+  .ps1 { color: var(--cyan); flex: 0 0 auto; }
+  .cmd { color: var(--text); min-width: 0; word-break: break-all; }
+  .cmd.ghost { color: var(--dim); }
+  .hint { color: var(--acc-dim); font-size: 12px; }
+  .cur::after { content: "\2588"; color: var(--acc); animation: blink 1s steps(1) infinite; margin-left: 1px; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .out { margin: 6px 0 0 0; color: var(--text); overflow-x: auto; }
+  .out .c { color: var(--dim); }
+  .out .g { color: var(--green); } .out .r { color: var(--red); } .out .y { color: var(--yellow); } .out .b { color: var(--cyan); }
+  .out .box { white-space: pre; }
+  .menu { margin: 10px 0 0; }
+  .menu button { font-family: inherit; font-size: 13.5px; background: transparent; color: var(--cyan); border: 1px solid #1f3a5c; border-radius: 3px; padding: 4px 10px; margin: 4px 6px 0 0; cursor: pointer; max-width: 100%; white-space: normal; word-break: break-word; text-align: left; }
+  .menu button:hover, .menu button.on { background: #0c1a2a; border-color: var(--cyan); }
+  .menu button b { color: var(--acc); font-weight: 600; }
+  .menu .lbl { color: var(--dim); margin-right: 6px; }
+  .next { display: block; margin: 22px 0 0; padding: 12px 10px; text-align: center; color: var(--acc); border: 1px solid var(--acc-dim); border-radius: 4px; cursor: pointer; text-decoration: none; font-weight: 600; letter-spacing: .04em; }
+  .next:hover { background: var(--sel); }
+  .next .arrow { display: block; font-size: 26px; line-height: 1; margin-bottom: 4px; animation: bob 1.4s ease-in-out infinite; }
+  @keyframes bob { 50% { transform: translateY(5px); } }
+  .hidden { display: none; }
+  .fin { padding: 40px 0 70px; color: var(--dim); }
+  @media (prefers-reduced-motion: reduce) { .cur::after, .next .arrow { animation: none; } html { scroll-behavior: auto; } body::before { display: none; } }
+</style>
 </head>
 <body>
-<div class="glow"></div><div class="gridbg"></div>
-
-<nav><div class="wrap">
-  <a class="logo" href="#"><i></i>taintline</a>
-  <div class="links">
-    <a href="#how" class="hide-sm">How it works</a>
-    <a href="#try" class="hide-sm">Try it</a>
-    <a href="#modes" class="hide-sm">Use it</a>
-    <a href="#proof" class="hide-sm">Proof</a>
-    <a class="btn ghost" href="https://github.com/RedaKarrach/taintline">GitHub ★</a>
+<div class="status"><div class="wrap"><span>TAINTLINE</span><span id="prog">[----------] Q0/7</span><span class="keys"><b>enter</b> run &nbsp; <b>&#8595;</b> next &nbsp; <b>1-9</b> choose &nbsp; <b>r</b> restart</span></div></div>
+<div class="wrap">
+  <div class="banner" id="top">
+<pre> _____  _    ___ _   _ _____ _     ___ _   _ _____
+|_   _|/ \  |_ _| \ | |_   _| |   |_ _| \ | | ____|
+  | | / _ \  | ||  \| | | | | |    | ||  \| |  _|
+  | |/ ___ \ | || |\  | | | | |___ | || |\  | |___
+  |_/_/   \_\___|_| \_| |_| |_____|___|_| \_|_____|</pre>
+    <p class="tag"><b>incident response for a hijacked AI agent</b> &middot; MIT &middot; <a href="https://github.com/RedaKarrach/taintline">github.com/RedaKarrach/taintline</a></p>
+    <p class="intro"><span class="k">What this is for.</span> An AI agent reads web pages, emails and files, then acts on what it read. A page can carry a line written for the agent, not for you: do this, do not tell the user. The agent reads it like any other text. That is prompt injection, and it leaves a trail. taintline reads the agent's own log and answers three questions: did something untrusted steer it, what left, and where did it go. It can also stand in front of the agent and refuse the call before anything leaves.<br><br>Seven questions, one command each. Run it, read what it prints, take the arrow down. The output below is what taintline really prints, from a simulated incident with made-up names.<br><br><span class="k">Press enter, or tap the command line, to run the first one.</span></p>
   </div>
-</div></nav>
-
-<main>
-<header><div class="wrap">
-  <div class="eyebrow up d1"><span class="dot"></span> AI-agent security · prompt injection · forensics</div>
-  <h1 class="up d2">Your AI agent reads the whole internet.<br><span class="g">What if part of it is lying to it?</span></h1>
-  <p class="lede up d3">taintline follows untrusted text through everything your agent does and checks it before anything
-  sensitive runs. Use it to investigate what went wrong — or to stop it from going wrong at all.</p>
-  <div class="cta up d4">
-    <a class="btn" href="https://github.com/RedaKarrach/taintline">Get it on GitHub</a>
-    <a class="btn ghost" href="#how">Watch how it works ↓</a>
+  <div id="steps"></div>
+  <div class="fin hidden" id="fin">
+    <div class="step">
+      <p class="q"><small>END OF TRANSMISSION</small>Run it yourself.</p>
+      <pre class="out"><span class="ps1">$</span> uv tool install git+https://github.com/RedaKarrach/taintline
+<span class="c"># or: pipx install git+https://github.com/RedaKarrach/taintline</span>
+<span class="ps1">$</span> taintline analyze trace.jsonl --out report/ --dashboard        <span class="c"># what happened, with evidence</span>
+<span class="ps1">$</span> taintline guard replay trace.jsonl                             <span class="c"># where the guard would have stopped it</span>
+<span class="ps1">$</span> taintline guard mcp-proxy --audit audit.jsonl -- your-mcp-server   <span class="c"># stop the next one, no code changes</span>
+<span class="ps1">$</span> taintline forensics pack build trace.jsonl --sign-key ir.key --out pack.json   <span class="c"># signed evidence</span>
+<span class="c"># feeding it your own agent</span>
+one JSON line per thing the agent does: user_message, model_output, tool_call, tool_result, memory_write, memory_read.
+adapters for OpenAI chat logs and OpenTelemetry GenAI spans: --format openai|otel. see docs/trace-format.md.
+<span class="c"># what it cannot do</span>
+- it reads logs. what was never logged, it cannot see.
+- the wording checks are plain regexes. a smoothly paraphrased instruction can pass them; the behaviour checks and the guard still catch what it tries to do.
+- it is one layer. keep your input and output filters and least-privilege tools.
+<span class="c"># stack</span>
+Python 3.10+ &middot; click &middot; rich &middot; networkx &middot; numpy &middot; cryptography &middot; tests run offline</pre>
+      <p style="margin-top:18px"><a href="https://github.com/RedaKarrach/taintline">source</a> &middot; <a href="https://github.com/RedaKarrach/taintline#readme">README</a> &middot; <a href="https://github.com/RedaKarrach/taintline/blob/master/docs/guard.md">the guard</a> &middot; <a href="https://github.com/RedaKarrach/taintline/blob/master/docs/forensics.md">forensics</a> &middot; <a href="#top" id="restart">[r] restart</a> &middot; built by <a href="https://github.com/RedaKarrach">Mohamed Reda Karrach</a>. every key, address, file and name here is made up.</p>
+    </div>
   </div>
-  <div class="stage up d5">
-    <img src="explainer.svg" alt="How taintline tracks untrusted input through an agent and checks it before a sensitive action">
-    <p class="cap">Sit back for nine seconds — it loops. That's the whole idea in one picture.</p>
-  </div>
-</div></header>
-
-<section id="how"><div class="wrap">
-  <h2>Here's the trick</h2>
-  <p class="sub">Most tools read an incoming message and guess <span class="q">"does this look dangerous?"</span>
-  taintline asks a sharper question: <span class="q">"did the dangerous thing actually happen?"</span></p>
-  <div class="steps">
-    <div class="step"><div class="ico">📥</div><h3>Something untrusted arrives</h3><p>A web page, an email, a file, a tool result. taintline marks it as "not ours" the moment it enters.</p></div>
-    <div class="step"><div class="ico">🧭</div><h3>It follows the trail</h3><p>As the agent reasons and acts, taintline tracks where that text goes — even into the agent's long-term memory, days later.</p></div>
-    <div class="step"><div class="ico">🚦</div><h3>It checks at the door</h3><p>Before any sensitive action — sending, running, writing, cloud calls — it asks: is untrusted input steering this? And is real data about to leave?</p></div>
-    <div class="step"><div class="ico">🧾</div><h3>It builds the case</h3><p>Every finding comes with the exact chain of events, tamper-proof hashes, and mappings to MITRE ATLAS, ATT&amp;CK, OWASP and NIST.</p></div>
-  </div>
-  <p style="color:var(--muted);margin-top:24px;max-width:720px">A page that merely <i>mentions</i> secrets? Nothing happens. A page that
-  <i>talks the agent into sending one out</i>? That's the moment taintline lights up. Quiet during real work, loud when it counts.</p>
-</div></section>
-
-<section id="try"><div class="wrap">
-  <h2>See it catch one</h2>
-  <p class="sub">Fake an attack, then investigate it. No setup, nothing real touched.</p>
-  <pre class="block"><code>pip install -e .
-
-taintline simulate --scenario indirect_exfil --out demo.jsonl   <span style="color:var(--muted)"># fake an attack</span>
-taintline analyze demo.jsonl                                     <span style="color:var(--muted)"># investigate it</span></code></pre>
-  <div class="stage" style="margin-top:16px;padding:10px"><img src="demo.svg" alt="taintline analyze output"></div>
-</div></section>
-
-<section id="modes"><div class="wrap">
-  <h2>Three ways to use it</h2>
-  <p class="sub">One engine, whether you're cleaning up after an incident or trying to prevent the next one.</p>
-  <div class="modes">
-    <div class="mode"><h3>🔎 Analyze</h3><p>Something went sideways. Reconstruct exactly what happened, with evidence you can hand to anyone.</p><pre>taintline analyze trace.jsonl \
-  --out report/ --dashboard</pre></div>
-    <div class="mode"><h3>🛡️ Guard</h3><p>Don't let it go sideways. Check every tool call live and block the bad ones — no changes to your agent.</p><pre>taintline guard mcp-proxy \
-  -- your-mcp-server</pre></div>
-    <div class="mode"><h3>📡 Pipeline</h3><p>Wire it into CI or your SIEM. Fail a build if an agent trace leaks something.</p><pre>taintline analyze traces.jsonl \
-  --fail-on high</pre></div>
-  </div>
-  <p style="color:var(--muted);margin-top:22px;max-width:740px">The <b style="color:var(--fg)">Guard</b> is the one to show off. It runs each tool call through the
-  taint engine first and decides — allow, log, ask a human, or block — in about a millisecond and a half. Drop it in front of any
-  Model Context Protocol server and your agent is covered.</p>
-</div></section>
-
-<section id="proof"><div class="wrap">
-  <h2>"Okay, but does it work?"</h2>
-  <p class="sub">Fair question. It proves itself — and it's honest about the limits.</p>
-  <div class="stats">
-    <div class="stat"><b>100%</b><span>of attacks caught in the eval</span></div>
-    <div class="stat"><b>0</b><span>false alarms on look-alikes</span></div>
-    <div class="stat"><b>66</b><span>disguised variants it fuzzes itself with</span></div>
-    <div class="stat"><b>113</b><span>tests, green on Python 3.10–3.13</span></div>
-  </div>
-  <p style="color:var(--muted);margin-top:22px;max-width:740px">It even attacks its <i>own</i> detections with 66 disguised variants. The result it'll tell you
-  straight: a single clever trick can slip past the keyword layer — but the behaviour layer and the guard still stop every one. That's defense in depth you can measure.</p>
-</div></section>
-
-<section id="catch"><div class="wrap">
-  <h2>What it catches</h2>
-  <p class="sub">The real playbook against AI agents, including the disguised versions.</p>
-  <div class="chips">
-    <span>Indirect prompt injection</span><span>Tool &amp; MCP poisoning</span><span>Cross-session memory poisoning</span>
-    <span>Credential exfiltration</span><span>Slow, chunked leaks</span><span>PII exfiltration</span>
-    <span>Cloud privilege escalation</span><span>Runaway destructive agents</span><span>Jailbreak-then-act</span>
-    <span>Output tracking beacons</span><span>Zero-width / homoglyph / base64 obfuscation</span>
-  </div>
-  <p class="maps">Every finding maps to <b>MITRE ATLAS</b>, <b>MITRE ATT&amp;CK</b>, the <b>OWASP LLM Top 10</b> and <b>NIST AI RMF</b> — the language your security team already speaks.</p>
-</div></section>
-</main>
-
-<footer><div class="wrap">
-  <div style="margin-bottom:14px"><a class="btn" href="https://github.com/RedaKarrach/taintline">Star it on GitHub</a></div>
-  <div>Built where ML security, cloud security, DFIR, detection engineering and GRC meet. MIT licensed.</div>
-  <p class="note">taintline is a detection, prevention and forensics layer — run it alongside input/output filtering and least-privilege tools,
-  not instead of them. Everything in the demos is synthetic: fake secrets, <code>.test</code> addresses, nothing real ever touched.</p>
-</div></footer>
+</div>
+<script src="app.js"></script>
 </body>
 </html>
