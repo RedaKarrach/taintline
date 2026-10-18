@@ -31,3 +31,8 @@ Thumbs.db
 
 # Separate project that shared the scratch workspace
 palimpsest/
+demo-report/
+demo.jsonl
+demo.manifest.json
+*.dashboard.html
+examples/sample-dashboard.html

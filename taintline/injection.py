@@ -98,24 +98,70 @@ class InjectionScore:
         return {"score": round(self.score, 3), "signals": list(self.signals)}
 
 
+_WEIGHTS = {name: w for name, _, w in _INJECTION_SIGNALS}
+# Evidence that content was deliberately hidden or encoded. Except for hidden
+# Unicode tag text (which has essentially no benign use outside emoji flags,
+# filtered by length), these only count alongside a content signal: zero-width
+# joiners appear in emoji and some scripts, mixed scripts in some brand names.
+_OBFUSCATION_WEIGHTS = {
+    "hidden_unicode_tags": 0.6,
+    "homoglyph_obfuscation": 0.35,
+    "invisible_char_obfuscation": 0.25,
+    "encoded_instruction": 0.35,
+    "spaced_letter_obfuscation": 0.2,
+}
+_WEIGHTS.update(_OBFUSCATION_WEIGHTS)
+
+
+def _signals_in(text: str) -> set[str]:
+    return {name for name, rx, _ in _INJECTION_SIGNALS if rx.search(text)}
+
+
 def score_injection(text: str) -> InjectionScore:
-    """Return a noisy-OR combined injection likelihood in [0, 1]."""
+    """Return a noisy-OR combined injection likelihood in [0, 1].
+
+    Signals are collected over the original text *and* every de-obfuscated view
+    (``taintline.normalize.detection_views``); the obfuscation techniques found
+    are themselves signals.
+    """
     if not text:
         return InjectionScore(0.0, ())
-    matched: list[tuple[str, float]] = []
-    for name, rx, w in _INJECTION_SIGNALS:
-        if rx.search(text):
-            matched.append((name, w))
-    if not matched:
+    from taintline.normalize import detection_views
+
+    views = detection_views(text)
+    original = _signals_in(text)
+    names = set(original)
+    decoded_extra: set[str] = set()
+    for view_name, view_text in views.views.items():
+        found = _signals_in(view_text)
+        if view_name in ("decoded_blobs", "unicode_tags", "rot13", "reversed"):
+            decoded_extra |= found - original
+        names |= found
+
+    obf = views.obfuscation
+    content = set(names)
+    tag_text = views.views.get("unicode_tags", "")
+    if len(tag_text) >= 8 and (" " in tag_text or content):
+        names.add("hidden_unicode_tags")
+    if content:
+        if obf.get("homoglyphs"):
+            names.add("homoglyph_obfuscation")
+        if obf.get("invisible_chars", 0) >= 2:
+            names.add("invisible_char_obfuscation")
+        if obf.get("spaced_letters"):
+            names.add("spaced_letter_obfuscation")
+        if decoded_extra - {"base64_blob", "secret_targeting"}:
+            names.add("encoded_instruction")
+
+    if not names:
         return InjectionScore(0.0, ())
     # secret_targeting alone (a page about password managers) is noise;
     # only count it in combination with an imperative signal.
-    names = {n for n, _ in matched}
-    if names == {"secret_targeting"} or names == {"secret_targeting", "attention_marker"}:
+    if names <= {"secret_targeting", "attention_marker"}:
         return InjectionScore(0.05, tuple(sorted(names)))
     prod = 1.0
-    for _, w in matched:
-        prod *= 1.0 - w
+    for n in names:
+        prod *= 1.0 - _WEIGHTS[n]
     return InjectionScore(round(1.0 - prod, 4), tuple(sorted(names)))
 
 

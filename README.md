@@ -16,6 +16,13 @@ happen) and **taint propagation** between them — but adapted to the realities 
 LLM agents: prompt injection, tool poisoning, cross-session memory persistence,
 and low-and-slow chunked exfiltration.
 
+taintline works in **three modes from one engine**: as a **forensic analyzer**
+after the fact, as an **inline runtime guard** that blocks dangerous tool calls
+before they execute (including a drop-in MCP proxy), and as a **detection +
+threat-intel pipeline** (SARIF, STIX 2.1, IOCs, signed evidence packs, CloudTrail
+correlation). An evasion fuzzer attacks its own detections to measure how well it
+holds up.
+
 This is a niche most people don't build. There are plenty of *input* guardrails
 (classify a prompt as it arrives). taintline works on the *trace* — the evidence
 left behind — which is where forensics, detection engineering, and incident
@@ -69,6 +76,22 @@ taintline is a **post-hoc trace analyzer** with a real information-flow model:
 | **Excessive agency** | destructive bursts, runaway loops, unprompted high-impact actions |
 | **Jailbreak → action** | a jailbreak message in the account followed by a sensitive call |
 | **Output-channel leaks** | markdown-image / query-string beacons emitted in model output |
+| **Obfuscated injection** | the same, hidden in Unicode tags, homoglyphs, zero-width chars, base64, leetspeak |
+
+## Three modes
+
+- **Analyze (forensics):** `taintline analyze trace.jsonl --out report/ --dashboard`
+  — taint + rules + anomaly + IOCs + blast radius, as Markdown / JSON / SARIF /
+  STIX / CSV / an interactive HTML dashboard, bound to a tamper-evident manifest.
+- **Guard (runtime prevention):** decide on every tool call before it runs —
+  allow / log / hold-for-approval / block. Use it in-process
+  (`taintline.guard.Guard`) or as a zero-code [MCP proxy](docs/guard.md) in front
+  of any MCP server. `taintline guard replay incident.jsonl` shows where it would
+  have stopped a past incident.
+- **Pipeline (detection + threat intel):** SARIF for code scanning, STIX 2.1 for
+  your TIP/SIEM, signed [evidence packs](docs/forensics.md) for the incident
+  record, and [CloudTrail correlation](docs/forensics.md) to prove whether a
+  stolen key was actually used.
 
 ## Install
 
@@ -133,7 +156,13 @@ JSON into a SIEM.
 
 | Command | Purpose |
 |---|---|
-| `taintline analyze` | taint + rules (+ anomaly); reports in md/json/sarif/csv/html |
+| `taintline analyze` | taint + rules + anomaly + IOCs + blast radius; md/json/sarif/stix/csv/html/dashboard |
+| `taintline guard mcp-proxy` | enforce the guard inline in front of an MCP stdio server |
+| `taintline guard replay` | replay a recorded incident: where would the guard have stopped it? |
+| `taintline guard policy` | validate and display a guard policy |
+| `taintline forensics ioc\|stix\|blast-radius\|dashboard` | IOCs, STIX bundle, blast radius, HTML dashboard |
+| `taintline forensics pack build\|verify\|keygen` | signed (Ed25519) evidence packs |
+| `taintline forensics cloudtrail` | correlate exfiltrated AWS keys against CloudTrail activity |
 | `taintline baseline` | fit a behavioural baseline from benign traces |
 | `taintline graph` | export the provenance / attack graph (Graphviz DOT or node-link JSON) |
 | `taintline custody build\|verify` | tamper-evident evidence manifest over a trace |
@@ -160,6 +189,9 @@ structurally anomalous sessions the rules don't encode. See
 ## Documentation
 
 - [docs/architecture.md](docs/architecture.md) — the pipeline and the taint model
+- [docs/guard.md](docs/guard.md) — runtime enforcement, policies, the MCP proxy
+- [docs/forensics.md](docs/forensics.md) — IOCs, STIX, blast radius, evidence packs, CloudTrail
+- [docs/robustness.md](docs/robustness.md) — the evasion fuzzer and what each layer catches
 - [docs/trace-format.md](docs/trace-format.md) — event schema and adapters
 - [docs/rule-authoring.md](docs/rule-authoring.md) — write your own detections
 - [docs/threat-model.md](docs/threat-model.md) — what it catches, what it can't
@@ -167,14 +199,16 @@ structurally anomalous sessions the rules don't encode. See
 
 ## Scope and honesty
 
-taintline analyzes **traces that already exist**; it is a forensic and detection
-tool, not a runtime guardrail or a WAF. Its content heuristics are transparent
-and regex-based by design (auditable, no model dependency), so a determined
-attacker who avoids known injection phrasing can lower the injection score — the
-data-flow and sequence detections still catch the *actions*. Framework mappings
-are best-effort triage labels, not a compliance attestation. All bundled attack
-data is synthetic; secrets are fake and exfil destinations use reserved `.test`
-domains.
+taintline's content heuristics are transparent and regex-based by design
+(auditable, no model dependency). A determined attacker who avoids known
+injection phrasing — a plain-language paraphrase — can defeat the injection-*text*
+layer; the data-flow, sequence and guard layers still catch the *actions*, which
+is the whole point of layering (measured in [docs/robustness.md](docs/robustness.md)).
+The runtime guard is a real preventive control but a single layer: run it
+alongside input/output filtering and least-privilege tool design, not instead of
+them. Framework mappings are best-effort triage labels, not a compliance
+attestation. All bundled attack data is synthetic; secrets are fake and exfil
+destinations use reserved `.test` domains.
 
 ## License
 

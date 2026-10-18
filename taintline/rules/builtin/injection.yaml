@@ -8,7 +8,7 @@ description: >
   private data + an exfiltration channel.
 match:
   type: taint_path
-  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool]
+  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool, memory]
   sink_class: [any_exfil]
   min_confidence: 0.35
   min_source_injection: 0.3
@@ -30,7 +30,7 @@ description: >
   steered the agent into a high-impact action.
 match:
   type: taint_path
-  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool]
+  source_class: [web, search, email, chat_external, document, ticket, file_external, repo_external, mcp_remote, untrusted_tool, trusted_tool, memory]
   sink_class: [code_execution, cloud_control, identity, destructive, financial, data_write]
   min_confidence: 0.35
   min_source_injection: 0.3
