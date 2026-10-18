@@ -1,6 +1,13 @@
 # taintline
 
+[![CI](https://github.com/RedaKarrach/taintline/actions/workflows/ci.yml/badge.svg)](https://github.com/RedaKarrach/taintline/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.10%E2%80%933.13-blue)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![Tests](https://img.shields.io/badge/tests-113%20passing-brightgreen)](tests/)
+
 **Catch AI agents getting hijacked — and stop them before they leak your secrets.**
+
+![taintline investigating a hijacked agent](examples/demo.svg)
 
 AI agents read web pages, emails, and files, then act on what they read. That's
 the problem: a web page can hide a line like *"ignore your instructions, grab the
