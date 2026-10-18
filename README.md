@@ -1,4 +1,4 @@
-# taintline
+<p align="center"><img src="docs/assets/logo-wordmark.svg" width="640" alt="taintline"></p>
 
 What happens when your AI agent reads a web page that is lying to it?
 

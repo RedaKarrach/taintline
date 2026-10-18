@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 256" width="1000" height="256" role="img" aria-label="taintline">
+  <defs>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1000" height="256" rx="40" fill="#03060c"/>
+
+  <!-- mark -->
+  <g transform="translate(24 0)">
+    <path d="M128 70 V54 L140 40" fill="none" stroke="#5aa9ff" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="146" cy="34" r="8" fill="none" stroke="#5aa9ff" stroke-width="6"/>
+    <rect x="56" y="70" width="144" height="118" rx="26" fill="#0a1526" stroke="#5aa9ff" stroke-width="8" filter="url(#glow)"/>
+    <path d="M166 70 L156 90 L172 102 L160 118" fill="none" stroke="#5aa9ff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <g stroke="#ff6b6b" stroke-width="11" stroke-linecap="round" filter="url(#glow)">
+      <path d="M86 108 L112 134 M112 108 L86 134"/>
+      <path d="M144 108 L170 134 M170 108 L144 134"/>
+    </g>
+    <path d="M100 162 H156" fill="none" stroke="#5aa9ff" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- wordmark as one run, so the words stay together in any font: the taint is red, the line is blue -->
+  <text x="292" y="148" font-family="'IBM Plex Mono', ui-monospace, Menlo, Consolas, 'Liberation Mono', monospace" font-weight="700" font-size="104" letter-spacing="1" filter="url(#glow)"><tspan fill="#ff6b6b">taint</tspan><tspan fill="#5aa9ff">line</tspan></text>
+  <text x="296" y="190" font-family="'IBM Plex Mono', ui-monospace, Menlo, Consolas, monospace" font-size="19" fill="#6b7790" letter-spacing="2.5">INCIDENT RESPONSE FOR A HIJACKED AI AGENT</text>
+
+  <!-- the taint line runs under the whole thing -->
+  <path d="M46 220 H954" fill="none" stroke="#2a5c9e" stroke-width="7" stroke-linecap="round"/>
+  <path d="M116 220 H188" fill="none" stroke="#ff6b6b" stroke-width="7" stroke-linecap="round" filter="url(#glow)"/>
+  <g fill="#5aa9ff">
+    <circle cx="64" cy="220" r="8"/>
+    <circle cx="936" cy="220" r="8"/>
+  </g>
+  <g fill="#ff6b6b" filter="url(#glow)">
+    <circle cx="116" cy="220" r="8"/>
+    <circle cx="188" cy="220" r="8"/>
+  </g>
+</svg>
